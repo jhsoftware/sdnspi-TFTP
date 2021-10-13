@@ -1,4 +1,5 @@
 ﻿Imports System.Net.Sockets
+Imports System.Threading.Tasks
 
 'opcode  operation
 '1     Read request (RRQ)
@@ -20,6 +21,7 @@
 
 Public Class TftpServer
   Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase
+  Implements JHSoftware.SimpleDNS.Plugin.IOptionsUI
 
   Private Cfg As MyConfig
 
@@ -32,16 +34,13 @@ Public Class TftpServer
 
   Private ShuttingDown As Boolean = False
 
-  Public Event LogLine(ByVal text As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LogLine
-  Public Event AsyncError(ByVal ex As System.Exception) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.AsyncError
+  Public Property Host As Plugin.IHost Implements Plugin.IPlugInBase.Host
 
   Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetPlugInTypeInfo
     Dim rv As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo
     rv.Name = "TFTP Server"
     rv.Description = "Read-only TFTP Server"
-    rv.InfoURL = "http://www.simpledns.com/kb.aspx?kbid=1302"
-    rv.ConfigFile = False
-    rv.MultiThreaded = False
+    rv.InfoURL = "https://simpledns.plus/kb/189/tftp-server-plug-in"
     Return rv
   End Function
 
@@ -53,20 +52,18 @@ Public Class TftpServer
 
   End Function
 
-  Public Sub LoadConfig(ByVal config As String, ByVal instanceID As System.Guid, ByVal dataPath As String, ByRef maxThreads As Integer) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadConfig
+  Public Sub LoadConfig(ByVal config As String, ByVal instanceID As System.Guid, ByVal dataPath As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadConfig
     Cfg = MyConfig.Load(config)
   End Sub
 
-  Public Function GetOptionsUI(ByVal instanceID As System.Guid, ByVal dataPath As String) As JHSoftware.SimpleDNS.Plugin.OptionsUI Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetOptionsUI
+  Public Function GetOptionsUI(ByVal instanceID As System.Guid, ByVal dataPath As String) As JHSoftware.SimpleDNS.Plugin.OptionsUI Implements JHSoftware.SimpleDNS.Plugin.IOptionsUI.GetOptionsUI
     Return New OptionsUI
   End Function
 
-  '............................................................................................................
-
-  Public Sub StartService() Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.StartService
+  Private Function StartService() As Task Implements Plugin.IPlugInBase.StartService
     SyncLock Me
-      LSock = New Socket(Cfg.ListenIP.ToNetIPAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp)
-      LEndPoint = New Net.IPEndPoint(Cfg.ListenIP.ToNetIPAddress, 69)
+      LSock = New Socket(Cfg.ListenIP.ToIPAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp)
+      LEndPoint = New Net.IPEndPoint(Cfg.ListenIP.ToIPAddress, 69)
       Try
         LSock.Bind(LEndPoint)
       Catch ex As Exception
@@ -76,15 +73,17 @@ Public Class TftpServer
       Try
         LSock.BeginReceiveFrom(LBuf, 0, LBuf.Length, SocketFlags.None, LEndPoint, AddressOf ListenCB, Nothing)
       Catch ex As Exception
-        If ShuttingDown Then Exit Sub
+        If ShuttingDown Then Return Task.CompletedTask
         Throw New Exception("Error listening for incoming requests", ex)
       End Try
 
       MyTimer = New System.Threading.Timer(AddressOf TimerCB, Nothing, 0, 1000)
 
-      RaiseEvent LogLine("Listening for TFTP requests on " & Cfg.ListenIP.ToString & " UDP port 69")
+      Host.LogLine("Listening for TFTP requests on " & Cfg.ListenIP.ToString & " UDP port 69")
     End SyncLock
-  End Sub
+
+    Return Task.CompletedTask
+  End Function
 
   Public Sub StopService() Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.StopService
     SyncLock Me
@@ -125,30 +124,30 @@ Public Class TftpServer
       Catch ex As SocketException
         If ex.ErrorCode = 10054 Then GoTo markWait4Next
         If ShuttingDown Then Exit Sub
-        RaiseEvent AsyncError(ex)
+        Host.AsyncError(ex)
       Catch ex As Exception
         If ShuttingDown Then Exit Sub
-        RaiseEvent AsyncError(ex)
+        Host.AsyncError(ex)
       End Try
 
       Dim LL = "TFTP request from " & DirectCast(LEndPoint, System.Net.IPEndPoint).Address.ToString
 
       If l < 4 Then GoTo markWait4Next
       Dim OpCode = LBuf(0) * 256 + LBuf(1)
-      If OpCode = 2 Then RaiseEvent LogLine(LL & " - Error 2: Write not allowed") : SendError(2, "Write not allowed") : GoTo markWait4Next
+      If OpCode = 2 Then Host.LogLine(LL & " - Error 2: Write not allowed") : SendError(2, "Write not allowed") : GoTo markWait4Next
       If OpCode <> 1 Then GoTo markWait4Next 'ignore opcodes other than read
       Dim p = 2
       Dim FileName = GetNullTermString(LBuf, l, p)
-      If String.IsNullOrEmpty(FileName) Then RaiseEvent LogLine(LL & " - Error 4: File name is required") : SendError(4, "File name is required") : GoTo markWait4Next
+      If String.IsNullOrEmpty(FileName) Then Host.LogLine(LL & " - Error 4: File name is required") : SendError(4, "File name is required") : GoTo markWait4Next
       LL &= " for """ & FileName & """"
       Dim x = GetNullTermString(LBuf, l, p).ToLower
-      If x <> "netascii" And x <> "octet" Then RaiseEvent LogLine(LL & " - Error 4: Unknown Mode (" & x & ")") : SendError(4, "Unknown Mode") : GoTo markWait4Next
+      If x <> "netascii" And x <> "octet" Then Host.LogLine(LL & " - Error 4: Unknown Mode (" & x & ")") : SendError(4, "Unknown Mode") : GoTo markWait4Next
 
       PurgeConns()
-      If Conns.Count >= Cfg.MaxConns Then RaiseEvent LogLine(LL & " Error 0: Too many connections") : SendError(0, "Too many connections - try again later") : GoTo markWait4Next
+      If Conns.Count >= Cfg.MaxConns Then Host.LogLine(LL & " Error 0: Too many connections") : SendError(0, "Too many connections - try again later") : GoTo markWait4Next
 
-      Dim Cn = New Connection With {.ClientEP = DirectCast(LEndPoint, System.Net.IPEndPoint), _
-                                    .MaxRetransmit = Cfg.MaxRetransmit, _
+      Dim Cn = New Connection With {.ClientEP = DirectCast(LEndPoint, System.Net.IPEndPoint),
+                                    .MaxRetransmit = Cfg.MaxRetransmit,
                                     .TimeOut = Cfg.DefTimeOut}
 
       Dim y As String, i As Integer
@@ -183,18 +182,18 @@ Public Class TftpServer
         SendError(2, ex.Message) : GoTo markWait4Next
       End Try
 
-      If Not fi.Exists Then RaiseEvent LogLine(LL & " - Error 1: File not found") : SendError(1, "File not found") : GoTo markWait4Next
+      If Not fi.Exists Then Host.LogLine(LL & " - Error 1: File not found") : SendError(1, "File not found") : GoTo markWait4Next
 
       Try
         Cn.File = fi.OpenRead
       Catch ex As Exception
-        RaiseEvent LogLine(LL & " - Error 0: " & ex.Message)
+        Host.LogLine(LL & " - Error 0: " & ex.Message)
         SendError(2, ex.Message) : GoTo markWait4Next
       End Try
 
-      RaiseEvent LogLine(LL & " - Sending " & fi.Length & " bytes.")
+      Host.LogLine(LL & " - Sending " & fi.Length & " bytes.")
       Conns.Add(Cn)
-      Cn.Go(fi.Length, Cfg.ListenIP.ToNetIPAddress)
+      Cn.Go(fi.Length, Cfg.ListenIP.ToIPAddress)
 
 markWait4Next:
       Try
@@ -202,10 +201,10 @@ markWait4Next:
       Catch ex As SocketException
         If ShuttingDown Then Exit Sub
         If ex.ErrorCode = 10054 Then GoTo markWait4Next
-        RaiseEvent AsyncError(ex)
+        Host.AsyncError(ex)
       Catch ex As Exception
         If ShuttingDown Then Exit Sub
-        RaiseEvent AsyncError(ex)
+        Host.AsyncError(ex)
       End Try
     End SyncLock
   End Sub
@@ -238,8 +237,6 @@ markWait4Next:
     Return rv
   End Function
 
-#Region "not implemented"
-  Public Event SaveConfig(ByVal config As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.SaveConfig
   Public Sub LoadState(ByVal state As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadState
     REM nothing 
   End Sub
@@ -248,5 +245,4 @@ markWait4Next:
     Return ""
   End Function
 
-#End Region
 End Class

@@ -11,14 +11,14 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyTitle("TFTP server plug-in")> 
 <Assembly: AssemblyDescription("TFTP server plug-in")> 
 <Assembly: AssemblyCompany("JH Software ApS")> 
-<Assembly: AssemblyProduct("Simple DNS Plus")> 
-<Assembly: AssemblyCopyright("Copyright © 2011 JH Software ApS")> 
+<Assembly: AssemblyProduct("Simple DNS Plus")>
+<Assembly: AssemblyCopyright("Copyright © 2011-2021 JH Software ApS")>
 <Assembly: AssemblyTrademark("Simple DNS Plus")> 
 
 <Assembly: ComVisible(False)>
 
 'The following GUID is for the ID of the typelib if this project is exposed to COM
-<Assembly: Guid("ae623233-22a7-45b4-b4ff-91817ba60407")> 
+<Assembly: Guid("ae623233-22a7-45b4-b4ff-91817ba60407")>
 
 ' Version information for an assembly consists of the following four values:
 '
@@ -31,5 +31,5 @@ Imports System.Runtime.InteropServices
 ' by using the '*' as shown below:
 ' <Assembly: AssemblyVersion("1.0.*")> 
 
-<Assembly: AssemblyVersion("5.2.1.0")> 
-<Assembly: AssemblyFileVersion("5.2.1.0")> 
+<Assembly: AssemblyVersion("9.1.1.0")>
+<Assembly: AssemblyFileVersion("9.1.1.0")>

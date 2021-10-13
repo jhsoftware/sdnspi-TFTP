@@ -11,7 +11,7 @@
     Dim cfg = MyConfig.Load(config)
     ddServerIP.SelectedIndex = -1
     For i = 0 To ddServerIP.Items.Count - 1
-      If DirectCast(ddServerIP.Items(i), JHSoftware.SimpleDNS.Plugin.IPAddress) = cfg.ListenIP Then ddServerIP.SelectedIndex = i : Exit For
+      If DirectCast(ddServerIP.Items(i), SdnsIP) = cfg.ListenIP Then ddServerIP.SelectedIndex = i : Exit For
     Next
     txtFolder.Text = cfg.Folder
     numConn.Value = cfg.MaxConns
@@ -50,7 +50,7 @@
 
   Public Overrides Function SaveData() As String
     Dim cfg As New MyConfig
-    cfg.ListenIP = DirectCast(ddServerIP.SelectedItem, JHSoftware.SimpleDNS.Plugin.IPAddress)
+    cfg.ListenIP = DirectCast(ddServerIP.SelectedItem, SdnsIP)
     cfg.Folder = txtFolder.Text
     cfg.MaxConns = CInt(numConn.Value)
     cfg.MaxRetransmit = CInt(numReTx.Value)
