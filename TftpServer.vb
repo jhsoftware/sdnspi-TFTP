@@ -36,11 +36,11 @@ Public Class TftpServer
 
   Public Property Host As Plugin.IHost Implements Plugin.IPlugInBase.Host
 
-  Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetPlugInTypeInfo
+  Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetTypeInfo
     Dim rv As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo
     rv.Name = "TFTP Server"
     rv.Description = "Read-only TFTP Server"
-    rv.InfoURL = "https://simpledns.plus/kb/189/tftp-server-plug-in"
+    rv.InfoURL = "https://simpledns.plus/plugin-tftp"
     Return rv
   End Function
 
