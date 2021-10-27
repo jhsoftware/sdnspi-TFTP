@@ -20,7 +20,7 @@ Imports System.Threading.Tasks
 ' 7         No such user.
 
 Public Class TftpServer
-  Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase
+  Implements JHSoftware.SimpleDNS.Plugin.INoDNS
   Implements JHSoftware.SimpleDNS.Plugin.IOptionsUI
 
   Private Cfg As MyConfig
@@ -36,8 +36,8 @@ Public Class TftpServer
 
   Public Property Host As Plugin.IHost Implements Plugin.IPlugInBase.Host
 
-  Public Function GetPlugInTypeInfo() As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.GetTypeInfo
-    Dim rv As JHSoftware.SimpleDNS.Plugin.IPlugInBase.PlugInTypeInfo
+  Public Function GetPlugInTypeInfo() As Plugin.TypeInfo Implements Plugin.IPlugInBase.GetTypeInfo
+    Dim rv As Plugin.TypeInfo
     rv.Name = "TFTP Server"
     rv.Description = "Read-only TFTP Server"
     rv.InfoURL = "https://simpledns.plus/plugin-tftp"
@@ -235,14 +235,6 @@ markWait4Next:
     rv = System.Text.Encoding.ASCII.GetString(buf, pos, bufLen - pos)
     pos = bufLen
     Return rv
-  End Function
-
-  Public Sub LoadState(ByVal state As String) Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.LoadState
-    REM nothing 
-  End Sub
-
-  Public Function SaveState() As String Implements JHSoftware.SimpleDNS.Plugin.IPlugInBase.SaveState
-    Return ""
   End Function
 
 End Class
